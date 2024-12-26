@@ -7,8 +7,9 @@ import os
 pygame.init()
 
 # Screen dimensions
-SCREEN_WIDTH = 800
+SCREEN_WIDTH = 900
 SCREEN_HEIGHT = 600
+
 
 # Load background image
 BG_IMAGE_PATH = os.path.join('assets', 'background.png')
@@ -189,7 +190,7 @@ def draw_button(surface, text, x, y, w, h, inactive_color, active_color, action=
         action()
 
 def draw_health_bar(lives):
-    draw_text(f'Lives: {lives}', FONT, WHITE, screen, SCREEN_WIDTH - 100, 40, center=False, shadow=False)
+    draw_text(f'Lives: {lives}', FONT, WHITE, screen, SCREEN_WIDTH - 200, 40, center=False, shadow=False)
 
 def draw_panel(surface, rect, color=PANEL_COLOR):
     # Draw a semi-transparent panel to highlight content
@@ -248,6 +249,9 @@ def level(stage_index=0):
         text_surf = FONT.render(capital, True, WHITE)
         capital_positions.append((capital, pygame.Rect(x, y, text_surf.get_width(), text_surf.get_height())))
 
+    # List to store matched lines
+    matched_lines = []
+
     running = True
     while running:
         mouse_pos = pygame.mouse.get_pos()
@@ -269,17 +273,22 @@ def level(stage_index=0):
                             correct_matches += 1
                             if correct_sound:
                                 correct_sound.play()
+
+                            # Store the line to draw between the flag and capital
+                            flag_rect = next(rect for f, rect in flag_positions if f == selected_flag)
+                            capital_rect = next(rect for c, rect in capital_positions if c == capital)
+                            matched_lines.append((flag_rect.center, capital_rect.center))
+
+                            # Remove matched items
                             flag_positions = [f for f in flag_positions if f[0] != selected_flag]
                             capital_positions = [c for c in capital_positions if c[0] != capital]
                             selected_flag = None
 
                             if correct_matches == total_matches:
-                                # Move to next stage or end game
                                 if stage_index < len(stage_data) - 1:
                                     level(stage_index + 1)
                                     return
                                 else:
-                                    # Player won the entire game
                                     draw_background()
                                     if victory_sound:
                                         victory_sound.play()
@@ -293,7 +302,6 @@ def level(stage_index=0):
                             lives -= 1
                             selected_flag = None
                             if lives == 0:
-                                # Game over scenario
                                 draw_background()
                                 if lose_sound:
                                     lose_sound.play()
@@ -304,40 +312,58 @@ def level(stage_index=0):
 
         # Redraw the screen each frame
         draw_background()
+        draw_health_bar(lives, max_lives=2)
 
-        # Stage title and instructions
+
         draw_text(f'Stage {stage_index + 1}: Match Flags with Capitals', FONT, WHITE, screen, SCREEN_WIDTH // 2, 60)
         draw_text('Click a flag, then click its correct capital.', FONT_SMALL, WHITE, screen, SCREEN_WIDTH // 2, 100)
 
         draw_health_bar(lives)
 
-        # Panel for flags and capitals
         flag_panel_rect = pygame.Rect(80, 130, 150, (len(flags)*80)+40)
         capital_panel_rect = pygame.Rect(580, 130, 200, (len(shuffled_capitals)*80)+40)
         draw_panel(screen, flag_panel_rect)
         draw_panel(screen, capital_panel_rect)
 
-        # Draw flags
         for country, rect in flag_positions:
             screen.blit(flag_images[country], rect.topleft)
-            # If this is the currently selected flag, highlight it with a "glow"
             if selected_flag == country:
                 glow_rect = rect.inflate(20, 20)
                 glow_surface = pygame.Surface(glow_rect.size, pygame.SRCALPHA)
                 pygame.draw.ellipse(glow_surface, (255, 255, 0, 100), glow_surface.get_rect())
                 screen.blit(glow_surface, glow_rect.topleft)
 
-        # Draw capitals with background panels
         for capital, rect in capital_positions:
             text_surf = FONT.render(capital, True, WHITE)
-            # Draw a small panel behind the capital text
             capital_bg = pygame.Surface((text_surf.get_width()+20, text_surf.get_height()+10), pygame.SRCALPHA)
             capital_bg.fill((0, 0, 0, 100))
             screen.blit(capital_bg, (rect.x-10, rect.y-5))
             screen.blit(text_surf, rect.topleft)
 
+        # Draw matched lines
+        for line in matched_lines:
+            pygame.draw.line(screen, (0, 255, 0), line[0], line[1], 4)
+
         pygame.display.flip()
 
+def draw_health_bar(lives, max_lives=2):
+  
+    bar_width = 150 
+    bar_height = 30  
+    bar_x = SCREEN_WIDTH - 240  
+    bar_y = 15  
+
+    filled_width = int((lives / max_lives) * bar_width)
+
+    pygame.draw.rect(screen, GRAY, (bar_x, bar_y, bar_width, bar_height))
+
+    pygame.draw.rect(screen, RED, (bar_x, bar_y, filled_width, bar_height))
+
+    pygame.draw.rect(screen, WHITE, (bar_x, bar_y, bar_width, bar_height), 2)
+
+    draw_text(f'Lives: {lives}/{max_lives}', FONT, WHITE, screen, SCREEN_WIDTH - 220, 17, center=False, shadow=False)
+
+ 
 def main_menu():
     running = True
     while running:
