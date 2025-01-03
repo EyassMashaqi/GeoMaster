@@ -2,6 +2,10 @@ import pygame
 import sys
 import random
 import os
+import pygal
+from itertools import permutations
+
+
 
 # Initialize pygame
 pygame.init()
@@ -38,6 +42,152 @@ LIGHT_BLUE = (135, 206, 235)
 DARK_BLUE = (0, 0, 139)
 GRAY = (50, 50, 50)
 YELLOW = (255, 215, 0)
+
+# Load flag images
+def load_flag_image(name, size=(180, 120)):
+    path = os.path.join('assets', 'Flags', f'{name}.png')
+    if os.path.exists(path):
+        img = pygame.image.load(path)
+        return pygame.transform.scale(img, size)
+    else:
+        # Placeholder for missing flags
+        img = pygame.Surface(size)
+        img.fill(GRAY)
+        return img
+
+# Generate flag variations
+import pygame
+import random
+
+
+def generate_variations(country, size=(180, 120), bg_color=(255, 255, 255)):
+    # Load the correct flag image
+    correct_flag = load_flag_image(country, size)
+    incorrect_flags = []
+
+    # Analyze flag structure
+    regions = [
+        pygame.Rect(0, 0, size[0] // 3, size[1]),        # Left section
+        pygame.Rect(size[0] // 3, 0, size[0] // 3, size[1]),  # Middle section
+        pygame.Rect(2 * size[0] // 3, 0, size[0] // 3, size[1])  # Right section
+    ]
+
+    # Extract and copy the regions
+    segments = [correct_flag.subsurface(region).copy() for region in regions]
+
+    # Generate all unique permutations of the regions
+    all_permutations = list(permutations(segments))
+    random.shuffle(all_permutations)  # Randomize the order of permutations
+
+    # Select two unique permutations that are not the same as the correct order
+    incorrect_variations = [perm for perm in all_permutations if perm != tuple(segments)]
+    selected_variations = incorrect_variations[:2]
+
+    # Create flag variations based on the selected permutations
+    for variation_order in selected_variations:
+        variation = pygame.Surface(size)
+        variation.fill(bg_color)  # Set background color
+        for i, segment in enumerate(variation_order):
+            variation.blit(segment, (i * (size[0] // 3), 0))  # Place segments
+        incorrect_flags.append(variation)
+
+    return correct_flag, incorrect_flags
+# Draw the GUI
+def draw_gui(country, options, option_positions, message=None):
+    # Fill the screen background
+    screen.fill(WHITE)
+
+    # Display the question
+    font = pygame.font.Font(None, 48)
+    question_text = font.render(f"What is the correct flag for {country}?", True, BLACK)
+    screen.blit(question_text, (400 - question_text.get_width() // 2, 50))
+
+    # Display options in boxes
+    for i, option in enumerate(options):
+        x, y = option_positions[i]
+        rect = pygame.Rect(x - 10, y - 10, 200, 140)  # Box around the flag
+        pygame.draw.rect(screen, BLACK, rect, 2)
+        screen.blit(option, (x, y))
+
+    # Display message if any
+    if message:
+        message_font = pygame.font.Font(None, 36)
+        message_text = message_font.render(message, True, RED if "Incorrect" in message else BLUE)
+        screen.blit(message_text, (400 - message_text.get_width() // 2, 500))
+
+    pygame.display.flip()
+def flag_guessing_game():
+    print("Starting Flag Guessing Game")
+
+    rounds = 5  # Number of rounds
+    score = 0  # Track correct guesses
+
+    for round_number in range(1, rounds + 1):
+        country = random.choice(country_list)  # Randomly select a country
+        correct_flag, incorrect_flags = generate_variations(country)
+
+        option_positions = [(350, 150), (350, 300), (350, 450)]
+        correct_index = random.randint(0, 2)
+        options = [None, None, None]
+        options[correct_index] = correct_flag
+
+        incorrect_idx = 0
+        for i in range(3):
+            if options[i] is None:
+                options[i] = incorrect_flags[incorrect_idx]
+                incorrect_idx += 1
+
+        running = True
+        message = None
+
+        while running:
+            screen.fill(WHITE)
+            draw_gui(country, options, option_positions, message)
+
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    pygame.quit()
+                    sys.exit()
+
+                if event.type == pygame.MOUSEBUTTONDOWN:
+                    mouse_pos = event.pos
+                    for i, (x, y) in enumerate(option_positions):
+                        rect = pygame.Rect(x, y, 180, 120)
+                        if rect.collidepoint(mouse_pos):
+                            if i == correct_index:
+                                message = f"Correct! ({round_number}/{rounds})"
+                                score += 1
+                                if correct_sound:
+                                    correct_sound.play()
+                            else:
+                                message = f"Incorrect! ({round_number}/{rounds})"
+                                if incorrect_sound:
+                                    incorrect_sound.play()
+                            draw_gui(country, options, option_positions, message)
+                            pygame.time.wait(1500)
+                            running = False
+
+    # End of game summary
+    draw_background()
+    losses = rounds - score  # Calculate losses
+
+    if score > losses:
+        message = "You Win! Well done!"
+        if victory_sound:
+            victory_sound.play()
+    elif score < losses:
+        message = "You Lose! Better luck next time!"
+        if lose_sound:
+            lose_sound.play()
+    else:
+        message = "It's a Draw!"
+        if draw_sound:
+            draw_sound.play()
+
+    draw_text(message, FONT, BLUE if score > losses else RED, screen, SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2)
+    pygame.display.update()
+    pygame.time.wait(3000)
+
 
 # Panels and highlights have some alpha
 PANEL_COLOR = (0, 0, 0, 180)  # Semi-transparent black panel
@@ -191,6 +341,8 @@ def draw_button(surface, text, x, y, w, h, inactive_color, active_color, action=
 
 def draw_health_bar(lives):
     draw_text(f'Lives: {lives}', FONT, WHITE, screen, SCREEN_WIDTH - 200, 40, center=False, shadow=False)
+
+
 
 def draw_panel(surface, rect, color=PANEL_COLOR):
     # Draw a semi-transparent panel to highlight content
@@ -367,7 +519,6 @@ def draw_health_bar(lives, max_lives=2):
 def main_menu():
     running = True
     while running:
-        mouse_pos = pygame.mouse.get_pos()
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 pygame.quit()
@@ -376,10 +527,16 @@ def main_menu():
         draw_background()
         draw_text('Flags and Capitals Game', FONT, WHITE, screen, SCREEN_WIDTH // 2, 150)
 
-        # Draw start button
-        draw_button(screen, 'Start Game', SCREEN_WIDTH // 2 - 100, 300, 200, 50, LIGHT_BLUE, BLUE, lambda: level(0))
+        
+        # Draw buttons
+        draw_button(screen, 'Country Capitals', SCREEN_WIDTH // 2 - 100, 300, 200, 50, LIGHT_BLUE, BLUE, lambda: level(0))
+        draw_button(screen, 'Flag Guessing', SCREEN_WIDTH // 2 - 100, 350, 200, 50, LIGHT_BLUE, BLUE, flag_guessing_game)
 
         pygame.display.update()
 
+# Initialize screen
+screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
+pygame.display.set_caption("Flags Game") 
+
 # Run the game
-main_menu()
+main_menu()          
