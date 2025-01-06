@@ -13,7 +13,10 @@ pygame.init()
 # Screen dimensions
 SCREEN_WIDTH = 900
 SCREEN_HEIGHT = 600
-
+CAPITALS_MUSIC_PATH = os.path.join('assets', 'sounds', 'capitals.mp3')
+FLAGS_MUSIC_PATH = os.path.join('assets', 'sounds', 'flags.mp3')
+MONUMENTS_MUSIC_PATH = os.path.join('assets', 'sounds', 'monument.mp3')
+MENU_MUSIC_PATH = os.path.join('assets', 'sounds', 'main.mp3')  
 
 # Load background image
 BG_IMAGE_PATH = os.path.join('assets', 'background.png')
@@ -55,9 +58,17 @@ def load_flag_image(name, size=(180, 120)):
         img.fill(GRAY)
         return img
 
-# Generate flag variations
-import pygame
-import random
+
+
+
+def change_background_music(music_path):
+    if os.path.exists(music_path):
+        pygame.mixer.music.stop()  # Stop current music
+        pygame.mixer.music.load(music_path)  # Load the new track
+        pygame.mixer.music.set_volume(0.5)  # Adjust volume (0.0 to 1.0)
+        pygame.mixer.music.play(-1)  # Loop indefinitely
+    else:
+        print(f"Warning: Music file not found at {music_path}")
 
 
 def generate_variations(country, size=(180, 120), bg_color=(255, 255, 255)):
@@ -116,7 +127,11 @@ def draw_gui(country, options, option_positions, message=None):
         screen.blit(message_text, (400 - message_text.get_width() // 2, 500))
 
     pygame.display.flip()
+
+
+
 def flag_guessing_game():
+    change_background_music(FLAGS_MUSIC_PATH)
     print("Starting Flag Guessing Game")
 
     rounds = 5  # Number of rounds
@@ -398,7 +413,10 @@ def draw_background():
     else:
         screen.fill(DARK_BLUE)
 
+
+
 def level(stage_index=0):
+    change_background_music(CAPITALS_MUSIC_PATH)
     # Ensure the stage has 'flags' data
     if 'flags' not in stage_data[stage_index]:
         print(f"Error: Stage {stage_index} does not contain 'flags'.")
@@ -548,6 +566,9 @@ def draw_health_bar(lives, max_lives=2):
 
 
 def monument_question_level():
+    
+    change_background_music(MONUMENTS_MUSIC_PATH)
+
     fade_in(700)
 
     # Extract monuments data
@@ -710,7 +731,16 @@ def draw_button(surface, text, x, y, w, h, inactive_color, active_color, action=
         if click_sound:
             click_sound.play()
         action()
+#BACKGROUND_MUSIC_PATH = os.path.join('assets', 'sounds', 'loopmusic.mp3')
 
+# Load and play the background music
+# if os.path.exists(BACKGROUND_MUSIC_PATH):
+#     pygame.mixer.music.load(BACKGROUND_MUSIC_PATH)
+#     pygame.mixer.music.set_volume(0.5)  # Adjust volume (0.0 to 1.0)
+#     pygame.mixer.music.play(-1)  # Loop indefinitely
+# else:
+#     print("Warning: Background music file not found!")
+change_background_music(MENU_MUSIC_PATH)
 
 # Run the game
 main_menu()          
