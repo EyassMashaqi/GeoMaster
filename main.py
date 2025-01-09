@@ -56,8 +56,54 @@ def load_flag_image(name, size=(180, 120)):
         return img
 
 # Generate flag variations
-import pygame
-import random
+
+def run_sequential_game():
+    total_score = 0
+    max_score = 0
+
+    # Define the levels in sequence
+    levels = [
+        ("Country Capitals", lambda: level(0)),
+        ("Flag Guessing", flag_guessing_game),
+        ("Monument Quiz", monument_question_level)
+    ]
+
+    for level_name, level_func in levels:
+        # Display level start message
+        draw_background()
+        draw_text_with_shadow(f"Starting {level_name}", FONT, WHITE, screen, SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2)
+        pygame.display.update()
+        pygame.time.wait(2000)
+
+        # Run the level and get the score
+        level_score, level_max_score = level_func()
+        total_score += level_score
+        max_score += level_max_score
+
+        # Show interim score
+        draw_background()
+        draw_text_with_shadow(
+            f"{level_name} Complete! Score: {level_score}/{level_max_score}",
+            FONT, WHITE, screen, SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2
+        )
+        pygame.display.update()
+        pygame.time.wait(3000)
+
+    # Final score display
+    show_final_score(total_score, max_score)
+
+    def show_final_score(total_score, max_score):
+        draw_gradient_background(screen, LIGHT_BLUE, DARK_BLUE)
+        box_rect = pygame.Rect(SCREEN_WIDTH // 2 - 250, SCREEN_HEIGHT // 2 - 150, 500, 300)
+        pygame.draw.rect(screen, YELLOW if total_score > max_score // 2 else RED, box_rect, border_radius=15)
+        pygame.draw.rect(screen, BLACK, box_rect, 5, border_radius=15)
+    
+        message = "Victory!" if total_score > max_score // 2 else "Game Over!"
+        draw_text(message, FONT, BLACK, screen, SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 - 40)
+        draw_text(f"Total Score: {total_score}/{max_score}", FONT_SMALL, BLACK, screen, SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 + 40)
+        pygame.display.update()
+        pygame.time.wait(5000)
+
 
 
 def generate_variations(country, size=(180, 120), bg_color=(255, 255, 255)):
@@ -387,7 +433,23 @@ def fade_in(duration=500):
             alpha = 0
         overlay.set_alpha(alpha)
         draw_background()
-        screen.blit(overlay, (0,0))
+        screen.blit(overlay, (0, 0))
+        pygame.display.flip()
+        if elapsed >= duration:
+            break
+
+def fade_out(duration=500):
+    # Fade-out effect for a smoother transition
+    overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
+    overlay.fill(BLACK)
+    start_time = pygame.time.get_ticks()
+    while True:
+        elapsed = pygame.time.get_ticks() - start_time
+        alpha = int((elapsed / duration) * 255)
+        if alpha > 255:
+            alpha = 255
+        overlay.set_alpha(alpha)
+        screen.blit(overlay, (0, 0))
         pygame.display.flip()
         if elapsed >= duration:
             break
@@ -398,11 +460,10 @@ def draw_background():
     else:
         screen.fill(DARK_BLUE)
 
-def level(stage_index=0):
-    # Ensure the stage has 'flags' data
+def level(stage_index=0, total_score=0):
     if 'flags' not in stage_data[stage_index]:
         print(f"Error: Stage {stage_index} does not contain 'flags'.")
-        return
+        return total_score
 
     current_stage = stage_data[stage_index]
     flags = current_stage['flags']
@@ -415,7 +476,6 @@ def level(stage_index=0):
     total_matches = len(flags)
     selected_flag = None
 
-    # Positioning for flags and capitals
     flag_positions = []
     for idx, country in enumerate(flags):
         x = 100
@@ -431,7 +491,6 @@ def level(stage_index=0):
         text_surf = FONT.render(capital, True, WHITE)
         capital_positions.append((capital, pygame.Rect(x, y, text_surf.get_width(), text_surf.get_height())))
 
-    # List to store matched lines
     matched_lines = []
 
     running = True
@@ -443,41 +502,47 @@ def level(stage_index=0):
                 sys.exit()
 
             if event.type == pygame.MOUSEBUTTONDOWN:
-                # Check if a flag was clicked
                 for country, rect in flag_positions:
                     if rect.collidepoint(mouse_pos):
                         selected_flag = country
 
-                # Check if a capital was clicked
                 for capital, rect in capital_positions:
                     if rect.collidepoint(mouse_pos) and selected_flag:
                         if capitals[selected_flag] == capital:
                             correct_matches += 1
+                            total_score += 1  # Increment cumulative score
                             if correct_sound:
                                 correct_sound.play()
 
-                            # Store the line to draw between the flag and capital
                             flag_rect = next(rect for f, rect in flag_positions if f == selected_flag)
                             capital_rect = next(rect for c, rect in capital_positions if c == capital)
                             matched_lines.append((flag_rect.center, capital_rect.center))
 
-                            # Remove matched items
                             flag_positions = [f for f in flag_positions if f[0] != selected_flag]
                             capital_positions = [c for c in capital_positions if c[0] != capital]
                             selected_flag = None
 
                             if correct_matches == total_matches:
+                                # Show victory message before moving to next level
+                                draw_background()
+                                draw_text("Victory!", FONT, GREEN, screen, SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 - 40)
+                                draw_text(f"Score: {total_score}", FONT_SMALL, GREEN, screen, SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 + 20)
+                                pygame.display.update()
+                                pygame.time.delay(3000)
+
+                                # Fade-out effect before moving to the next level
+                                fade_out(700)
+
                                 if stage_index < len(stage_data) - 1:
-                                    level(stage_index + 1)
-                                    return
+                                    return level(stage_index + 1, total_score)
                                 else:
                                     draw_background()
-                                    if victory_sound:
-                                        victory_sound.play()
-                                    draw_text('You Win!', FONT, GREEN, screen, SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2)
+                                    draw_text("Congratulations! You completed the game!", FONT, GREEN, screen, SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 - 40)
+                                    draw_text(f"Final Score: {total_score}", FONT_SMALL, GREEN, screen, SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 + 20)
                                     pygame.display.update()
-                                    pygame.time.delay(2000)
+                                    pygame.time.delay(5000)
                                     running = False
+                                    return total_score
                         else:
                             if incorrect_sound:
                                 incorrect_sound.play()
@@ -485,26 +550,20 @@ def level(stage_index=0):
                             selected_flag = None
                             if lives == 0:
                                 draw_background()
-                                if lose_sound:
-                                    lose_sound.play()
-                                draw_text('Game Over!', FONT, RED, screen, SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2)
+                                draw_text("Game Over!", FONT, RED, screen, SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2)
                                 pygame.display.update()
                                 pygame.time.delay(2000)
                                 running = False
+                                return total_score
 
-        # Redraw the screen each frame
         draw_background()
-        draw_health_bar(lives, max_lives=2)
-
-        draw_text(f'Stage {stage_index + 1}: Match Flags with Capitals', FONT, WHITE, screen, SCREEN_WIDTH // 2, 60)
-        draw_text('Click a flag, then click its correct capital.', FONT_SMALL, WHITE, screen, SCREEN_WIDTH // 2, 100)
-
         draw_health_bar(lives)
 
-        flag_panel_rect = pygame.Rect(80, 130, 150, (len(flags) * 80) + 40)
-        capital_panel_rect = pygame.Rect(580, 130, 200, (len(shuffled_capitals) * 80) + 40)
-        draw_panel(screen, flag_panel_rect)
-        draw_panel(screen, capital_panel_rect)
+        draw_text(f"Stage {stage_index + 1}: Match Flags with Capitals", FONT, WHITE, screen, SCREEN_WIDTH // 2, 60)
+        draw_text("Click a flag, then click its correct capital.", FONT_SMALL, WHITE, screen, SCREEN_WIDTH // 2, 100)
+
+        draw_panel(screen, pygame.Rect(80, 130, 150, (len(flags) * 80) + 40))
+        draw_panel(screen, pygame.Rect(580, 130, 200, (len(shuffled_capitals) * 80) + 40))
 
         for country, rect in flag_positions:
             screen.blit(flag_images[country], rect.topleft)
@@ -521,15 +580,12 @@ def level(stage_index=0):
             screen.blit(capital_bg, (rect.x - 10, rect.y - 5))
             screen.blit(text_surf, rect.topleft)
 
-        # Draw matched lines
         for line in matched_lines:
             pygame.draw.line(screen, (0, 255, 0), line[0], line[1], 4)
 
         pygame.display.flip()
 
-
 def draw_health_bar(lives, max_lives=2):
-
     bar_width = 150 
     bar_height = 30  
     bar_x = SCREEN_WIDTH - 240  
@@ -538,16 +594,13 @@ def draw_health_bar(lives, max_lives=2):
     filled_width = int((lives / max_lives) * bar_width)
 
     pygame.draw.rect(screen, GRAY, (bar_x, bar_y, bar_width, bar_height))
-
     pygame.draw.rect(screen, RED, (bar_x, bar_y, filled_width, bar_height))
-
     pygame.draw.rect(screen, WHITE, (bar_x, bar_y, bar_width, bar_height), 2)
-
     draw_text(f'Lives: {lives}/{max_lives}', FONT, WHITE, screen, SCREEN_WIDTH - 220, 17, center=False, shadow=False)
 
 
 
-def monument_question_level():
+def monument_question_level(total_score=0):
     fade_in(700)
 
     # Extract monuments data
@@ -557,7 +610,7 @@ def monument_question_level():
     all_monuments = list(monuments.values())
 
     rounds = 5  # Number of questions
-    score = 0  # Track correct answers
+    score = 0  # Track correct answers in this level
 
     for round_number in range(rounds):
         # Select a random country and its correct monument
@@ -610,6 +663,7 @@ def monument_question_level():
                             selected_option = option
                             if selected_option == correct_monument:
                                 score += 1
+                                total_score += 1  # Increment total score
                                 message = "Correct!"
                                 highlight_box(screen, rect, GREEN)
                                 if correct_sound:
@@ -622,12 +676,14 @@ def monument_question_level():
                             pygame.time.wait(1500)
                             running = False
 
-        # End of game summary
+    # End of level summary
     draw_background()
-    message = f"Your score: {score}/{rounds}"
+    message = f"Level Score: {score}/{rounds} | Total Score: {total_score}"
     draw_text(message, FONT, GREEN if score > rounds // 2 else RED, screen, SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2)
     pygame.display.update()
     pygame.time.wait(3000)
+
+    return total_score  # Return the updated total score
 
 # Function to draw gradient box
 def draw_gradient_box(surface, rect, color1, color2, border_radius=0):
