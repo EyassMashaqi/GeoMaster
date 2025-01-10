@@ -286,30 +286,124 @@ def flag_guessing_game():
 
 
 
-
-
-
 # Function to show victory or loss screen
 def show_end_screen(score, rounds):
-    draw_gradient_background(screen, LIGHT_BLUE, DARK_BLUE)
-    box_rect = pygame.Rect(SCREEN_WIDTH // 2 - 250, SCREEN_HEIGHT // 2 - 150, 500, 300)
-    pygame.draw.rect(screen, YELLOW if score > rounds // 2 else RED, box_rect, border_radius=15)
-    pygame.draw.rect(screen, BLACK, box_rect, 5, border_radius=15)
+    # Load end screen background
+    END_BACKGROUND_PATH = os.path.join('assets', 'endBackground.webp')
+    try:
+        end_background = pygame.image.load(END_BACKGROUND_PATH)
+        end_background = pygame.transform.scale(end_background, (SCREEN_WIDTH, SCREEN_HEIGHT))
+    except pygame.error as e:
+        print(f"Error loading {END_BACKGROUND_PATH}: {e}")
+        end_background = None
 
-    # Victory or Loss Message
-    if score > rounds // 2:
-        message = "Victory! Well Done!"
-        if victory_sound:
-            victory_sound.play()
-    else:
-        message = "Game Over! Better Luck Next Time!"
-        if lose_sound:
-            lose_sound.play()
+    # Determine result and colors
+    is_victory = score > rounds // 2
+    message = "Victory! Well Done!" if is_victory else "Game Over! Better Luck Next Time!"
+    box_color = (0, 0, 0, 180)  # Semi-transparent black
+    text_color = (0, 255, 0) if is_victory else (255, 0, 0)  # Green for victory, Red for game over
 
-    draw_text(message, FONT, BLACK, screen, SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 - 40)
-    draw_text(f"Final Score: {score}/{rounds}", FONT_SMALL, BLACK, screen, SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 + 40)
-    pygame.display.update()
-    pygame.time.wait(4000)
+    if is_victory and victory_sound:
+        victory_sound.play()
+    elif not is_victory and lose_sound:
+        lose_sound.play()
+
+    # Render the end screen
+    running = True
+    while running:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
+
+        # Draw background
+        if end_background:
+            screen.blit(end_background, (0, 0))
+        else:
+            screen.fill(DARK_BLUE)  # Fallback if image is missing
+
+        # Draw translucent overlay
+        overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
+        pygame.draw.rect(overlay, box_color, (SCREEN_WIDTH // 2 - 300, SCREEN_HEIGHT // 2 - 150, 600, 300), border_radius=20)
+        screen.blit(overlay, (0, 0))
+
+        # Display result message
+        draw_text(message, FONT_MEDIUM, text_color, screen, SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 - 70)
+
+        # Display final score
+        draw_text(f"Final Score: {score} / {rounds}", FONT_SMALL, WHITE, screen, SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 + 20)
+
+        # Display "Press any key to continue" message
+        draw_text("Press any key to continue", FONT_SMALL, GRAY, screen, SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 + 100)
+
+        pygame.display.update()
+
+        # Wait for user input to exit the screen
+        for event in pygame.event.get():
+            if event.type == pygame.KEYDOWN or event.type == pygame.MOUSEBUTTONDOWN:
+                running = False
+                break
+
+    pygame.time.wait(500)
+
+
+
+# def show_end_screen(score, rounds, background_path):
+#     # Load the custom background image
+#     try:
+#         end_background = pygame.image.load(background_path)
+#         end_background = pygame.transform.scale(end_background, (SCREEN_WIDTH, SCREEN_HEIGHT))
+#     except pygame.error as e:
+#         print(f"Error loading {background_path}: {e}")
+#         end_background = None
+
+#     # Determine result and colors
+#     is_victory = score >= rounds // 2
+#     message = "Victory! Well Done!" if is_victory else "Game Over! Better Luck Next Time!"
+#     box_color = (0, 0, 0, 180)  # Semi-transparent black
+#     text_color = (0, 255, 0) if is_victory else (255, 0, 0)  # Green for victory, red for game over
+
+#     # Play corresponding sound
+#     if is_victory and victory_sound:
+#         victory_sound.play()
+#     elif not is_victory and lose_sound:
+#         lose_sound.play()
+
+#     # Render the end screen
+#     running = True
+#     while running:
+#         for event in pygame.event.get():
+#             if event.type == pygame.QUIT:
+#                 pygame.quit()
+#                 sys.exit()
+#             if event.type == pygame.KEYDOWN or event.type == pygame.MOUSEBUTTONDOWN:
+#                 running = False  # Exit screen when any key or mouse is pressed
+
+#         # Draw background
+#         if end_background:
+#             screen.blit(end_background, (0, 0))
+#         else:
+#             screen.fill(DARK_BLUE)  # Fallback background color
+
+#         # Draw translucent overlay
+#         overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
+#         pygame.draw.rect(overlay, box_color, (SCREEN_WIDTH // 2 - 300, SCREEN_HEIGHT // 2 - 150, 600, 300), border_radius=20)
+#         screen.blit(overlay, (0, 0))
+
+#         # Display result message
+#         draw_text(message, FONT_MEDIUM, text_color, screen, SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 - 70)
+
+#         # Display final score
+#         draw_text(f"Final Score: {score} / {rounds}", FONT_SMALL, WHITE, screen, SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 + 20)
+
+#         # Display "Press any key to continue" message
+#         draw_text("Press any key to continue", FONT_SMALL, GRAY, screen, SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 + 100)
+
+#         pygame.display.update()
+
+#     pygame.time.wait(500)
+
+
 
 
 
@@ -705,11 +799,11 @@ def draw_health_bar(lives, max_lives=2):
 def monument_question_level(total_score=0):
     # Load the custom background image
     bg_image_path = os.path.join('assets', 'monument_background.webp')
-    if os.path.exists(bg_image_path):
+    try:
         bg_image = pygame.image.load(bg_image_path)
         bg_image = pygame.transform.scale(bg_image, (SCREEN_WIDTH, SCREEN_HEIGHT))
-    else:
-        print(f"Warning: Background image not found at {bg_image_path}. Using solid color.")
+    except pygame.error as e:
+        print(f"Error loading background image: {e}")
         bg_image = None
 
     change_background_music(MONUMENTS_MUSIC_PATH)
@@ -817,27 +911,50 @@ def monument_question_level(total_score=0):
                             pygame.time.wait(1500)
                             running = False
 
-    # End of level summary
-    if bg_image:
-        screen.blit(bg_image, (0, 0))
-    else:
-        screen.fill(DARK_BLUE)
+    # Modern end-of-level screen
+    running = True
+    while running:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
+            if event.type == pygame.KEYDOWN or event.type == pygame.MOUSEBUTTONDOWN:
+                running = False  # Exit when key or mouse is pressed
 
-    if score >= rounds // 2:
-        message = "Victory! Well Done!"
-        if victory_sound:
+        # Draw end-of-level background
+        if bg_image:
+            screen.blit(bg_image, (0, 0))
+        else:
+            screen.fill(DARK_BLUE)
+
+        # Translucent overlay
+        overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
+        pygame.draw.rect(overlay, (0, 0, 0, 180), (SCREEN_WIDTH // 2 - 300, SCREEN_HEIGHT // 2 - 150, 600, 300), border_radius=20)
+        screen.blit(overlay, (0, 0))
+
+        # Victory or Game Over message
+        is_victory = score >= 3  # At least 3 correct answers to win
+        message = "Victory! Well Done!" if is_victory else "Game Over! Better Luck Next Time!"
+        text_color = GREEN if is_victory else RED
+
+        # Play corresponding sound
+        if is_victory and victory_sound:
             victory_sound.play()
-    else:
-        message = "Game Over! Better Luck Next Time!"
-        if lose_sound:
+        elif not is_victory and lose_sound:
             lose_sound.play()
 
-    draw_text(message, FONT, GREEN if score >= rounds // 2 else RED, screen, SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 - 40)
-    draw_text(f"Level Score: {score}/{rounds} | Total Score: {total_score}", FONT_SMALL, WHITE, screen, SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 + 20)
-    pygame.display.update()
-    pygame.time.wait(5000)
+        # Draw result messages
+        draw_text(message, FONT_MEDIUM, text_color, screen, SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 - 70)
+        draw_text(f"Level Score: {score}/{rounds}", FONT_SMALL, WHITE, screen, SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 + 20)
+        draw_text("Press any key to continue", FONT_SMALL, WHITE, screen, SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 + 100)
+
+        pygame.display.update()
+
+    pygame.time.wait(500)
 
     return total_score
+
+
 
 
 
