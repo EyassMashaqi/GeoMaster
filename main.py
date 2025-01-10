@@ -29,9 +29,10 @@ if os.path.exists(FONT_PATH):
     FONT = pygame.font.Font(FONT_PATH, 36)
     FONT_SMALL = pygame.font.Font(FONT_PATH, 28)
 else:
-    FONT = pygame.font.Font(None, 36)
-    FONT_LARGE = pygame.font.Font(None, 100)
     FONT_SMALL = pygame.font.Font(None, 28)
+    FONT = pygame.font.Font(None, 36)
+    FONT_MEDIUM = pygame.font.Font(None, 48)
+    FONT_LARGE = pygame.font.Font(None, 100)
 
 CAPITALS_MUSIC_PATH = os.path.join('assets', 'sounds', 'capitals.mp3')
 FLAGS_MUSIC_PATH = os.path.join('assets', 'sounds', 'flags.mp3')
@@ -320,7 +321,7 @@ CORRECT_SOUND_PATH = os.path.join('assets', 'sounds', 'CorrectAnswer.mp3')
 INCORRECT_SOUND_PATH = os.path.join('assets', 'sounds', 'incorrect.mp3')
 CLICK_SOUND_PATH = os.path.join('assets', 'sounds', 'Click.mp3')
 VICTORY_SOUND_PATH = os.path.join('assets', 'sounds', 'Victory.mp3')
-LOSE_SOUND_PATH = os.path.join('assets', 'sounds', 'Sad.mp3')
+LOSE_SOUND_PATH = os.path.join('assets', 'sounds', 'Sad2.mp3')
 
 
 def load_sound(path):
@@ -529,6 +530,11 @@ def draw_background():
         screen.fill(DARK_BLUE)
 
 def level(stage_index=0, total_score=0):
+    level_bg = os.path.join('assets', 'background.png')
+    if os.path.exists(level_bg):
+        bg_image = pygame.image.load(level_bg)
+        bg_image = pygame.transform.scale(bg_image, (SCREEN_WIDTH, SCREEN_HEIGHT))
+        
     change_background_music(CAPITALS_MUSIC_PATH)
     if 'flags' not in stage_data[stage_index]:
         print(f"Error: Stage {stage_index} does not contain 'flags'.")
@@ -636,7 +642,7 @@ def level(stage_index=0, total_score=0):
                                 running = False
                                 return total_score
 
-        draw_background()
+        # draw_background()
         draw_health_bar(lives)
 
         draw_text(f"Stage: {stage_index + 1} | Correct Matches: {correct_matches} / {total_matches}", FONT, WHITE, screen, SCREEN_WIDTH // 2, 40)
@@ -697,6 +703,15 @@ def draw_health_bar(lives, max_lives=2):
 
 
 def monument_question_level(total_score=0):
+    # Load the custom background image
+    bg_image_path = os.path.join('assets', 'monument_background.webp')
+    if os.path.exists(bg_image_path):
+        bg_image = pygame.image.load(bg_image_path)
+        bg_image = pygame.transform.scale(bg_image, (SCREEN_WIDTH, SCREEN_HEIGHT))
+    else:
+        print(f"Warning: Background image not found at {bg_image_path}. Using solid color.")
+        bg_image = None
+
     change_background_music(MONUMENTS_MUSIC_PATH)
     fade_in(700)
 
@@ -727,30 +742,53 @@ def monument_question_level(total_score=0):
         message = None
 
         while running:
-            draw_background()
+            # Draw the background
+            if bg_image:
+                screen.blit(bg_image, (0, 0))
+            else:
+                screen.fill(DARK_BLUE)
 
             # Display round and score
-            draw_text(f"Round {round_number} / {rounds}", FONT, WHITE, screen, 150, 50, center=False)
-            draw_text(f"Score: {score}", FONT, WHITE, screen, SCREEN_WIDTH - 200, 50, center=False)
+            draw_panel(screen, pygame.Rect(10, 10, SCREEN_WIDTH - 20, 60), (0, 0, 0, 120))
+            draw_text(f"Round {round_number} / {rounds}", FONT, WHITE, screen, 50, 30, center=False)
+            draw_text(f"Score: {score}", FONT, WHITE, screen, SCREEN_WIDTH - 150, 30, center=False)
 
-            # Display question
-            draw_text(f"Which monument is in {country}?", FONT, YELLOW, screen, SCREEN_WIDTH // 2, 100)
+            # Display the question with larger text and slightly lower position
+            draw_text(f"Which monument is in {country}?", FONT_MEDIUM, YELLOW, screen, SCREEN_WIDTH // 2, 140)
 
-            # Display options with styled boxes
+            # Calculate button layout for 2 rows and 2 columns (centered)
             option_positions = []
+            total_button_width = 2 * 300 + 50  # 300px button width, 50px gap between columns
+            total_button_height = 2 * 60 + 40  # 60px button height, 40px gap between rows
+            start_x = (SCREEN_WIDTH - total_button_width) // 2
+            start_y = (SCREEN_HEIGHT - total_button_height) // 2 + 70  # Center vertically with offset
+
+            button_width = 300
+            button_height = 60
+            gap_x = 50  # Horizontal gap between buttons
+            gap_y = 40  # Vertical gap between buttons
+
             for i, option in enumerate(options):
-                x = SCREEN_WIDTH // 2 - 150
-                y = 150 + i * 100
-                rect = pygame.Rect(x, y, 300, 60)
+                row = i // 2  # Calculate row index (0 or 1)
+                col = i % 2   # Calculate column index (0 or 1)
+                x = start_x + col * (button_width + gap_x)
+                y = start_y + row * (button_height + gap_y)
+                rect = pygame.Rect(x, y, button_width, button_height)
                 option_positions.append((option, rect))
 
-                # Draw the option box with a gradient
-                draw_gradient_box(screen, rect, LIGHT_BLUE, BLUE, border_radius=10)
+                # Detect hover
+                if rect.collidepoint(pygame.mouse.get_pos()):
+                    # Hover effect with gradient
+                    draw_gradient_box(screen, rect, (255, 255, 100), (255, 215, 0), border_radius=15)
+                else:
+                    # Normal button
+                    draw_gradient_box(screen, rect, (135, 206, 250), (30, 144, 255), border_radius=15)
+
                 draw_text(option, FONT, WHITE, screen, rect.centerx, rect.centery)
 
             # Display feedback message
             if message:
-                draw_text(message, FONT, RED if "Incorrect" in message else GREEN, screen, SCREEN_WIDTH // 2, 500)
+                draw_text(message, FONT, RED if "Incorrect" in message else GREEN, screen, SCREEN_WIDTH // 2, SCREEN_HEIGHT - 100)
 
             pygame.display.flip()
 
@@ -780,7 +818,11 @@ def monument_question_level(total_score=0):
                             running = False
 
     # End of level summary
-    draw_background()
+    if bg_image:
+        screen.blit(bg_image, (0, 0))
+    else:
+        screen.fill(DARK_BLUE)
+
     if score >= rounds // 2:
         message = "Victory! Well Done!"
         if victory_sound:
@@ -796,7 +838,8 @@ def monument_question_level(total_score=0):
     pygame.time.wait(5000)
 
     return total_score
-  # Return the updated total score
+
+
 
 # Function to draw gradient box
 def draw_gradient_box(surface, rect, color1, color2, border_radius=0):
