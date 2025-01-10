@@ -13,7 +13,10 @@ pygame.init()
 # Screen dimensions
 SCREEN_WIDTH = 900
 SCREEN_HEIGHT = 600
-
+CAPITALS_MUSIC_PATH = os.path.join('assets', 'sounds', 'capitals.mp3')
+FLAGS_MUSIC_PATH = os.path.join('assets', 'sounds', 'flags.mp3')
+MONUMENTS_MUSIC_PATH = os.path.join('assets', 'sounds', 'monument.mp3')
+MENU_MUSIC_PATH = os.path.join('assets', 'sounds', 'main.mp3')  
 
 # Load background image
 BG_IMAGE_PATH = os.path.join('assets', 'background.png')
@@ -56,54 +59,8 @@ def load_flag_image(name, size=(180, 120)):
         return img
 
 # Generate flag variations
-
-def run_sequential_game():
-    total_score = 0
-    max_score = 0
-
-    # Define the levels in sequence
-    levels = [
-        ("Country Capitals", lambda: level(0)),
-        ("Flag Guessing", flag_guessing_game),
-        ("Monument Quiz", monument_question_level)
-    ]
-
-    for level_name, level_func in levels:
-        # Display level start message
-        draw_background()
-        draw_text_with_shadow(f"Starting {level_name}", FONT, WHITE, screen, SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2)
-        pygame.display.update()
-        pygame.time.wait(2000)
-
-        # Run the level and get the score
-        level_score, level_max_score = level_func()
-        total_score += level_score
-        max_score += level_max_score
-
-        # Show interim score
-        draw_background()
-        draw_text_with_shadow(
-            f"{level_name} Complete! Score: {level_score}/{level_max_score}",
-            FONT, WHITE, screen, SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2
-        )
-        pygame.display.update()
-        pygame.time.wait(3000)
-
-    # Final score display
-    show_final_score(total_score, max_score)
-
-    def show_final_score(total_score, max_score):
-        draw_gradient_background(screen, LIGHT_BLUE, DARK_BLUE)
-        box_rect = pygame.Rect(SCREEN_WIDTH // 2 - 250, SCREEN_HEIGHT // 2 - 150, 500, 300)
-        pygame.draw.rect(screen, YELLOW if total_score > max_score // 2 else RED, box_rect, border_radius=15)
-        pygame.draw.rect(screen, BLACK, box_rect, 5, border_radius=15)
-    
-        message = "Victory!" if total_score > max_score // 2 else "Game Over!"
-        draw_text(message, FONT, BLACK, screen, SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 - 40)
-        draw_text(f"Total Score: {total_score}/{max_score}", FONT_SMALL, BLACK, screen, SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 + 40)
-        pygame.display.update()
-        pygame.time.wait(5000)
-
+import pygame
+import random
 
 
 def generate_variations(country, size=(180, 120), bg_color=(255, 255, 255)):
@@ -162,7 +119,11 @@ def draw_gui(country, options, option_positions, message=None):
         screen.blit(message_text, (400 - message_text.get_width() // 2, 500))
 
     pygame.display.flip()
+
+
+
 def flag_guessing_game():
+    change_background_music(FLAGS_MUSIC_PATH)
     print("Starting Flag Guessing Game")
 
     rounds = 5  # Number of rounds
@@ -491,7 +452,8 @@ def draw_background():
     else:
         screen.fill(DARK_BLUE)
 
-def level(stage_index=0, total_score=0):
+def level(stage_index=0):
+    # Ensure the stage has 'flags' data
     if 'flags' not in stage_data[stage_index]:
         print(f"Error: Stage {stage_index} does not contain 'flags'.")
         return total_score
@@ -641,7 +603,7 @@ def draw_health_bar(lives, max_lives=2):
 
 
 
-def monument_question_level(total_score=0):
+def monument_question_level():
     fade_in(700)
 
     # Extract monuments data
@@ -823,7 +785,16 @@ def draw_button(surface, text, x, y, w, h, inactive_color, active_color, action=
         if click_sound:
             click_sound.play()
         action()
+#BACKGROUND_MUSIC_PATH = os.path.join('assets', 'sounds', 'loopmusic.mp3')
 
+# Load and play the background music
+# if os.path.exists(BACKGROUND_MUSIC_PATH):
+#     pygame.mixer.music.load(BACKGROUND_MUSIC_PATH)
+#     pygame.mixer.music.set_volume(0.5)  # Adjust volume (0.0 to 1.0)
+#     pygame.mixer.music.play(-1)  # Loop indefinitely
+# else:
+#     print("Warning: Background music file not found!")
+change_background_music(MENU_MUSIC_PATH)
 
 # Run the game
 main_menu()          
