@@ -874,7 +874,32 @@ def monument_question_level(total_score=0):
             draw_text(f"Score: {score}", FONT, WHITE, screen, SCREEN_WIDTH - 150, 30, center=False)
 
             # Display the question
-            draw_text(f"Which monument is in {country}?", FONT_MEDIUM, YELLOW, screen, SCREEN_WIDTH // 2, 140)
+            # Background for the question text
+            question_text = f"Which monument is in {country}?"
+            text_surf = FONT_MEDIUM.render(question_text, True, YELLOW)
+            text_width, text_height = text_surf.get_size()
+
+            # Calculate position and background dimensions
+            bg_x = (SCREEN_WIDTH - text_width - 40) // 2  # Add padding of 20px on each side
+            bg_y = 120  # Slightly above the text
+            bg_width = text_width + 40  # Add padding
+            bg_height = text_height + 20  # Add padding
+
+            # Draw the background rectangle (gray color)
+            # Create a transparent surface
+            overlay = pygame.Surface((bg_width, bg_height), pygame.SRCALPHA)
+
+            # Fill the surface with a semi-transparent gray color
+            overlay.fill((0, 0, 0, 150)) 
+
+            # Blit the transparent surface onto the screen
+            screen.blit(overlay, (bg_x, bg_y))
+
+            # Draw the text on top of the transparent background
+            draw_text(question_text, FONT_MEDIUM, YELLOW, screen, SCREEN_WIDTH // 2, bg_y + bg_height // 2)
+
+            # Draw the text on top of the background
+            draw_text(question_text, FONT_MEDIUM, YELLOW, screen, SCREEN_WIDTH // 2, bg_y + bg_height // 2)
 
             # Calculate button layout for 2 rows and 2 columns (centered)
             option_positions = []
