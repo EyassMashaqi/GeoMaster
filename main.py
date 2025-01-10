@@ -624,11 +624,16 @@ def draw_background():
         screen.fill(DARK_BLUE)
 
 def level(stage_index=0, total_score=0):
+    # Load the background image
     level_bg = os.path.join('assets', 'background.png')
+    bg_image = None
     if os.path.exists(level_bg):
-        bg_image = pygame.image.load(level_bg)
-        bg_image = pygame.transform.scale(bg_image, (SCREEN_WIDTH, SCREEN_HEIGHT))
-        
+        try:
+            bg_image = pygame.image.load(level_bg)
+            bg_image = pygame.transform.scale(bg_image, (SCREEN_WIDTH, SCREEN_HEIGHT))
+        except pygame.error as e:
+            print(f"Error loading background image: {e}")
+    
     change_background_music(CAPITALS_MUSIC_PATH)
     if 'flags' not in stage_data[stage_index]:
         print(f"Error: Stage {stage_index} does not contain 'flags'.")
@@ -665,7 +670,7 @@ def level(stage_index=0, total_score=0):
     def draw_gradient_line(surface, start_pos, end_pos, color_start, color_end, width):
         x1, y1 = start_pos
         x2, y2 = end_pos
-        for i in range(0, 101, 2):  # Adjust step for smoother gradient
+        for i in range(0, 101, 2):
             alpha = i / 100
             x = x1 + (x2 - x1) * alpha
             y = y1 + (y2 - y1) * alpha
@@ -676,8 +681,49 @@ def level(stage_index=0, total_score=0):
             )
             pygame.draw.circle(surface, color, (int(x), int(y)), width // 2)
 
+    def display_end_of_round(message, color):
+        """Displays end-of-round screen with the same visuals."""
+        running = True
+        while running:
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    pygame.quit()
+                    sys.exit()
+                if event.type == pygame.KEYDOWN or event.type == pygame.MOUSEBUTTONDOWN:
+                    running = False
+
+            # Draw the background
+            if bg_image:
+                screen.blit(bg_image, (0, 0))
+            else:
+                screen.fill(DARK_BLUE)
+
+            # Draw health bar and stage summary
+            draw_health_bar(lives)
+            draw_text(f"Stage: {stage_index + 1} | Correct Matches: {correct_matches} / {total_matches}", FONT, WHITE, screen, SCREEN_WIDTH // 2, 40)
+            draw_text(f"Score: {total_score}", FONT, WHITE, screen, 50, 40, center=False)
+
+            # Translucent overlay for the end-of-round summary
+            overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
+            pygame.draw.rect(overlay, (0, 0, 0, 180), (SCREEN_WIDTH // 2 - 300, SCREEN_HEIGHT // 2 - 150, 600, 300), border_radius=20)
+            screen.blit(overlay, (0, 0))
+
+            # End-of-round message
+            draw_text(message, FONT_MEDIUM, color, screen, SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 - 50)
+            draw_text("Press any key to continue", FONT_SMALL, WHITE, screen, SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 + 50)
+
+            pygame.display.flip()
+            pygame.time.wait(100)
+
     running = True
     while running:
+        # Draw the background
+        if bg_image:
+            screen.blit(bg_image, (0, 0))
+        else:
+            screen.fill(DARK_BLUE)
+
+        # Handle events
         mouse_pos = pygame.mouse.get_pos()
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -708,17 +754,10 @@ def level(stage_index=0, total_score=0):
                             if correct_matches == total_matches:
                                 fade_out(700)
                                 if stage_index < len(stage_data) - 1:
+                                    display_end_of_round("Round Complete!", GREEN)
                                     return level(stage_index + 1, total_score)
                                 else:
-                                    # Final victory message
-                                    draw_background()
-                                    draw_text("Congratulations! You completed the game!", FONT, GREEN, screen, SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 - 40)
-                                    draw_text(f"Final Score: {total_score}", FONT_SMALL, GREEN, screen, SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 + 20)
-                                    if victory_sound:
-                                        victory_sound.play()
-                                    pygame.display.update()
-                                    pygame.time.delay(5000)
-                                    running = False
+                                    display_end_of_round("Congratulations! You completed the game!", GREEN)
                                     return total_score
                         else:
                             if incorrect_sound:
@@ -726,34 +765,24 @@ def level(stage_index=0, total_score=0):
                             lives -= 1
                             selected_flag = None
                             if lives == 0:
-                                draw_background()
-                                draw_text("Game Over!", FONT, RED, screen, SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2)
-                                draw_text(f"Total Score: {total_score}", FONT_SMALL, RED, screen, SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 + 20)
-                                if lose_sound:
-                                    lose_sound.play()
-                                pygame.display.update()
-                                pygame.time.delay(5000)
-                                running = False
+                                display_end_of_round("Game Over!", RED)
                                 return total_score
 
-        # draw_background()
+        # Draw health bar and text
         draw_health_bar(lives)
-
         draw_text(f"Stage: {stage_index + 1} | Correct Matches: {correct_matches} / {total_matches}", FONT, WHITE, screen, SCREEN_WIDTH // 2, 40)
         draw_text(f"Score: {total_score}", FONT, WHITE, screen, 50, 40, center=False)
-
         draw_text("Click a flag, then click its correct capital.", FONT_SMALL, WHITE, screen, SCREEN_WIDTH // 2, 100)
 
+        # Draw panels and elements
         draw_panel(screen, pygame.Rect(80, 130, 150, (len(flags) * 80) + 40))
         draw_panel(screen, pygame.Rect(580, 130, 250, (len(shuffled_capitals) * 80) + 40))
 
         for country, rect in flag_positions:
             screen.blit(flag_images[country], rect.topleft)
             if selected_flag == country:
-                glow_rect = rect.inflate(10, 10)  # Bigger glow
+                glow_rect = rect.inflate(10, 10)
                 glow_surface = pygame.Surface(glow_rect.size, pygame.SRCALPHA)
-
-                # Adjusted glow to center it over the flag
                 for alpha, size in zip([50, 100, 150, 200], [40, 30, 20, 10]):
                     glow_layer = rect.inflate(size, size)
                     offset_x = (glow_layer.width - rect.width) // 2
@@ -763,7 +792,6 @@ def level(stage_index=0, total_score=0):
                         (255, 255, 0, alpha),
                         glow_surface.get_rect().move(-offset_x, -offset_y)
                     )
-
                 screen.blit(glow_surface, glow_rect.topleft)
 
         for capital, rect in capital_positions:
@@ -777,8 +805,6 @@ def level(stage_index=0, total_score=0):
             draw_gradient_line(screen, line[0], line[1], (0, 255, 0), (0, 128, 0), 4)
 
         pygame.display.flip()
-
-
 
 
 def draw_health_bar(lives, max_lives=2):
@@ -847,7 +873,7 @@ def monument_question_level(total_score=0):
             draw_text(f"Round {round_number} / {rounds}", FONT, WHITE, screen, 50, 30, center=False)
             draw_text(f"Score: {score}", FONT, WHITE, screen, SCREEN_WIDTH - 150, 30, center=False)
 
-            # Display the question with larger text and slightly lower position
+            # Display the question
             draw_text(f"Which monument is in {country}?", FONT_MEDIUM, YELLOW, screen, SCREEN_WIDTH // 2, 140)
 
             # Calculate button layout for 2 rows and 2 columns (centered)
@@ -870,13 +896,11 @@ def monument_question_level(total_score=0):
                 rect = pygame.Rect(x, y, button_width, button_height)
                 option_positions.append((option, rect))
 
-                # Detect hover
-                if rect.collidepoint(pygame.mouse.get_pos()):
-                    # Hover effect with gradient
-                    draw_gradient_box(screen, rect, (255, 255, 100), (255, 215, 0), border_radius=15)
-                else:
-                    # Normal button
-                    draw_gradient_box(screen, rect, (135, 206, 250), (30, 144, 255), border_radius=15)
+                # Detect hover and draw rounded buttons
+                color_start = (255, 255, 100) if rect.collidepoint(pygame.mouse.get_pos()) else (135, 206, 250)
+                color_end = (255, 215, 0) if rect.collidepoint(pygame.mouse.get_pos()) else (30, 144, 255)
+                pygame.draw.rect(screen, color_start, rect, border_radius=20)
+                pygame.draw.rect(screen, color_end, rect.inflate(-4, -4), border_radius=20)  # Inner gradient effect
 
                 draw_text(option, FONT, WHITE, screen, rect.centerx, rect.centery)
 
@@ -953,7 +977,6 @@ def monument_question_level(total_score=0):
     pygame.time.wait(500)
 
     return total_score
-
 
 
 
