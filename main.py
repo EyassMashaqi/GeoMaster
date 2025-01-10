@@ -170,13 +170,19 @@ def flag_guessing_game():
 
     for round_number in range(1, rounds + 1):
         country = random.choice(country_list)  # Randomly select a country
-        correct_flag, incorrect_flags = generate_variations(country)
+        correct_flag = load_flag_image(country)  # Load correct flag image
 
-        # Shuffle flag options
-        options = [correct_flag] + incorrect_flags
+        # Select two incorrect flags (ensure they are different from the correct one)
+        incorrect_countries = [c for c in country_list if c != country]
+        incorrect_flags = random.sample(incorrect_countries, 2)
+        incorrect_images = [load_flag_image(inc) for inc in incorrect_flags]
+
+        # Combine correct flag with incorrect flags
+        options = [correct_flag] + incorrect_images
         random.shuffle(options)
-        option_positions = [(200, 200), (350, 350), (500, 200)]
+        option_positions = [(200, 300), (400, 300), (600, 300)]  # Positioned in one row
 
+        # Determine the index of the correct flag
         correct_index = options.index(correct_flag)
         running = True
         message = None
@@ -185,12 +191,35 @@ def flag_guessing_game():
             # Draw gradient background
             draw_gradient_background(screen, DARK_BLUE, LIGHT_BLUE)
 
-            # Display round and score
+            # Draw background panels for question and options
+            draw_panel(screen, pygame.Rect(100, 50, 700, 100), (0, 0, 0, 150))  # Question panel
+            draw_panel(screen, pygame.Rect(100, 250, 700, 200), (0, 0, 0, 100))  # Options panel
+
+            # Display question and score
             draw_text(f"Round {round_number} / {rounds}", FONT, WHITE, screen, 150, 50, center=False)
             draw_text(f"Score: {score}", FONT, WHITE, screen, SCREEN_WIDTH - 200, 50, center=False)
+            draw_text(f"What is the flag of {country}?", FONT, YELLOW, screen, SCREEN_WIDTH // 2, 100)
 
-            # Draw flag guessing GUI
-            draw_gui(country, options, option_positions, message)
+            # Draw the options
+            for i, option in enumerate(options):
+                x, y = option_positions[i]
+                rect = pygame.Rect(x, y, 180, 120)
+
+                # Add hover effect
+                if rect.collidepoint(pygame.mouse.get_pos()):
+                    draw_gradient_box(screen, rect.inflate(10, 10), LIGHT_BLUE, BLUE, border_radius=10)
+                else:
+                    pygame.draw.rect(screen, BLACK, rect, 2)
+
+                # Center the flag inside the border
+                flag_rect = option.get_rect(center=rect.center)
+                screen.blit(option, flag_rect.topleft)
+
+            # Display feedback message
+            if message:
+                draw_text(message, FONT, RED if "Incorrect" in message else GREEN, screen, SCREEN_WIDTH // 2, 500)
+
+            pygame.display.flip()
 
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
@@ -203,13 +232,13 @@ def flag_guessing_game():
                         rect = pygame.Rect(x, y, 180, 120)
                         if rect.collidepoint(mouse_pos):
                             if i == correct_index:
-                                message = f"Correct! ({round_number}/{rounds})"
+                                message = "Correct!"
                                 score += 1
                                 highlight_box(screen, rect, GREEN)
                                 if correct_sound:
                                     correct_sound.play()
                             else:
-                                message = f"Incorrect! ({round_number}/{rounds})"
+                                message = f"Incorrect! The correct answer was: {country}"
                                 highlight_box(screen, rect, RED)
                                 if incorrect_sound:
                                     incorrect_sound.play()
@@ -218,6 +247,8 @@ def flag_guessing_game():
 
     # End of game summary
     show_end_screen(score, rounds)
+
+
 
 
 # Function to show victory or loss screen
@@ -523,22 +554,17 @@ def level(stage_index=0, total_score=0):
                             selected_flag = None
 
                             if correct_matches == total_matches:
-                                # Show victory message before moving to next level
-                                draw_background()
-                                draw_text("Victory!", FONT, GREEN, screen, SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 - 40)
-                                draw_text(f"Score: {total_score}", FONT_SMALL, GREEN, screen, SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 + 20)
-                                pygame.display.update()
-                                pygame.time.delay(3000)
-
-                                # Fade-out effect before moving to the next level
+                                # Move directly to the next level
                                 fade_out(700)
-
                                 if stage_index < len(stage_data) - 1:
                                     return level(stage_index + 1, total_score)
                                 else:
+                                    # Final victory message
                                     draw_background()
                                     draw_text("Congratulations! You completed the game!", FONT, GREEN, screen, SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 - 40)
                                     draw_text(f"Final Score: {total_score}", FONT_SMALL, GREEN, screen, SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 + 20)
+                                    if victory_sound:
+                                        victory_sound.play()
                                     pygame.display.update()
                                     pygame.time.delay(5000)
                                     running = False
@@ -549,22 +575,33 @@ def level(stage_index=0, total_score=0):
                             lives -= 1
                             selected_flag = None
                             if lives == 0:
+                                # Game over message
                                 draw_background()
                                 draw_text("Game Over!", FONT, RED, screen, SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2)
+                                draw_text(f"Total Score: {total_score}", FONT_SMALL, RED, screen, SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 + 20)
+                                if lose_sound:
+                                    lose_sound.play()
                                 pygame.display.update()
-                                pygame.time.delay(2000)
+                                pygame.time.delay(5000)
                                 running = False
                                 return total_score
 
+        # Redraw the screen
         draw_background()
         draw_health_bar(lives)
 
-        draw_text(f"Stage {stage_index + 1}: Match Flags with Capitals", FONT, WHITE, screen, SCREEN_WIDTH // 2, 60)
+        # Display stage, round, and score
+        draw_text(f"Stage: {stage_index + 1} | Correct Matches: {correct_matches} / {total_matches}", FONT, WHITE, screen, SCREEN_WIDTH // 2, 40)
+        draw_text(f"Score: {total_score}", FONT, WHITE, screen, 50, 40, center=False)  # Score on the left side
+
+        # Display instructions
         draw_text("Click a flag, then click its correct capital.", FONT_SMALL, WHITE, screen, SCREEN_WIDTH // 2, 100)
 
+        # Draw panels
         draw_panel(screen, pygame.Rect(80, 130, 150, (len(flags) * 80) + 40))
         draw_panel(screen, pygame.Rect(580, 130, 200, (len(shuffled_capitals) * 80) + 40))
 
+        # Display flags
         for country, rect in flag_positions:
             screen.blit(flag_images[country], rect.topleft)
             if selected_flag == country:
@@ -573,6 +610,7 @@ def level(stage_index=0, total_score=0):
                 pygame.draw.ellipse(glow_surface, (255, 255, 0, 100), glow_surface.get_rect())
                 screen.blit(glow_surface, glow_rect.topleft)
 
+        # Display capitals
         for capital, rect in capital_positions:
             text_surf = FONT.render(capital, True, WHITE)
             capital_bg = pygame.Surface((text_surf.get_width() + 20, text_surf.get_height() + 10), pygame.SRCALPHA)
@@ -580,10 +618,13 @@ def level(stage_index=0, total_score=0):
             screen.blit(capital_bg, (rect.x - 10, rect.y - 5))
             screen.blit(text_surf, rect.topleft)
 
+        # Draw matched lines
         for line in matched_lines:
             pygame.draw.line(screen, (0, 255, 0), line[0], line[1], 4)
 
         pygame.display.flip()
+
+
 
 def draw_health_bar(lives, max_lives=2):
     bar_width = 150 
@@ -612,7 +653,7 @@ def monument_question_level(total_score=0):
     rounds = 5  # Number of questions
     score = 0  # Track correct answers in this level
 
-    for round_number in range(rounds):
+    for round_number in range(1, rounds + 1):
         # Select a random country and its correct monument
         country = random.choice(countries)
         correct_monument = monuments[country]
@@ -631,7 +672,13 @@ def monument_question_level(total_score=0):
 
         while running:
             draw_background()
-            draw_text(f"Which monument is in {country}?", FONT, WHITE, screen, SCREEN_WIDTH // 2, 60)
+
+            # Display round and score
+            draw_text(f"Round {round_number} / {rounds}", FONT, WHITE, screen, 150, 50, center=False)
+            draw_text(f"Score: {score}", FONT, WHITE, screen, SCREEN_WIDTH - 200, 50, center=False)
+
+            # Display question
+            draw_text(f"Which monument is in {country}?", FONT, YELLOW, screen, SCREEN_WIDTH // 2, 100)
 
             # Display options with styled boxes
             option_positions = []
@@ -678,12 +725,22 @@ def monument_question_level(total_score=0):
 
     # End of level summary
     draw_background()
-    message = f"Level Score: {score}/{rounds} | Total Score: {total_score}"
-    draw_text(message, FONT, GREEN if score > rounds // 2 else RED, screen, SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2)
-    pygame.display.update()
-    pygame.time.wait(3000)
+    if score >= rounds // 2:
+        message = "Victory! Well Done!"
+        if victory_sound:
+            victory_sound.play()
+    else:
+        message = "Game Over! Better Luck Next Time!"
+        if lose_sound:
+            lose_sound.play()
 
-    return total_score  # Return the updated total score
+    draw_text(message, FONT, GREEN if score >= rounds // 2 else RED, screen, SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 - 40)
+    draw_text(f"Level Score: {score}/{rounds} | Total Score: {total_score}", FONT_SMALL, WHITE, screen, SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 + 20)
+    pygame.display.update()
+    pygame.time.wait(5000)
+
+    return total_score
+  # Return the updated total score
 
 # Function to draw gradient box
 def draw_gradient_box(surface, rect, color1, color2, border_radius=0):
@@ -716,7 +773,7 @@ def main_menu():
         draw_gradient_background(screen, DARK_BLUE, LIGHT_BLUE)
 
         # Draw the game title with shadow
-        draw_text_with_shadow('Flags and Capitals Game', FONT, WHITE, screen, SCREEN_WIDTH // 2, 100, shadow_offset=5)
+        draw_text_with_shadow('Geo Master', FONT, WHITE, screen, SCREEN_WIDTH // 2, 100, shadow_offset=5)
 
         # Draw buttons
         draw_button(screen, 'Country Capitals', SCREEN_WIDTH // 2 - 100, 250, 200, 50, LIGHT_BLUE, BLUE, lambda: level(0))
